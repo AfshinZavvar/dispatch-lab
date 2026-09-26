@@ -1,5 +1,7 @@
 # Dispatch Lab
 
+[![Tests](https://github.com/AfshinZavvar/dispatch-lab/actions/workflows/tests.yml/badge.svg?branch=main&event=push)](https://github.com/AfshinZavvar/dispatch-lab/actions/workflows/tests.yml)
+
 Dispatch Lab is a deterministic CPU-scheduling simulator and event debugger built with .NET 10, C# 14, and standalone Blazor WebAssembly. It calculates complete immutable traces first, then lets a learner replay and compare what different schedulers do at the same absolute tick.
 
 The application models one logical CPU, integer ticks, one CPU burst per job, and no I/O. It is intentionally a teaching model rather than an operating-system emulator.
@@ -208,6 +210,8 @@ Console.WriteLine($"Average waiting time: {result.Metrics.AverageWaitingTime:F2}
 `SchedulingResult` includes execution slices, ordered events with snapshots, per-job metrics, aggregate metrics, and the input jobs/options. Use the Application layer's `AlgorithmCatalog` and `SimulationRunner` to compare several schedulers against the same copied workload. Results produced by the engine expose read-only collections; playback navigates them without recalculating scheduling decisions.
 
 ## Verification commands
+
+The **Tests** badge above shows the latest push-triggered GitHub Actions result for `main`. The [test workflow](.github/workflows/tests.yml) restores dependencies, builds in Release mode, and runs all three test projects on every push to `main` and pull request targeting `main`. It can also be started manually from the Actions tab. Click the badge to inspect run details and download TRX test reports (retained for 14 days). A green `passing` badge means that workflow succeeded; it reports build/test status, not website deployment.
 
 ```powershell
 dotnet build CpuSchedulingSimulator.slnx --no-restore

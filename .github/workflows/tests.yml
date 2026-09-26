@@ -1,0 +1,50 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Build and test
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore CpuSchedulingSimulator.slnx
+
+      - name: Build
+        run: dotnet build CpuSchedulingSimulator.slnx --configuration Release --no-restore
+
+      - name: Run all tests
+        run: dotnet test CpuSchedulingSimulator.slnx --configuration Release --no-build --no-restore --logger trx --results-directory artifacts/test-results
+
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: test-results
+          path: artifacts/test-results/**/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
