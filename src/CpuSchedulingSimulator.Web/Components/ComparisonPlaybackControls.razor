@@ -1,0 +1,50 @@
+<div class="comparison-controls" aria-label="Synchronized comparison playback controls">
+    <div class="comparison-transport">
+        @if (Playback.Status == PlaybackStatus.Playing)
+        {
+            <button class="control-primary" type="button" @onclick="Pause"><span aria-hidden="true">Ⅱ</span> Pause all</button>
+        }
+        else if (Playback.Status == PlaybackStatus.Paused)
+        {
+            <button class="control-primary" type="button" @onclick="Resume"><span aria-hidden="true">▶</span> Resume all</button>
+        }
+        else
+        {
+            <button class="control-primary" type="button" @onclick="Start"><span aria-hidden="true">▶</span> Play all</button>
+        }
+        <button type="button" @onclick="Step" disabled="@(!Playback.CanStepForward)"><span aria-hidden="true">↦</span> Next shared decision</button>
+        <button type="button" @onclick="Restart"><span aria-hidden="true">↺</span> Restart all</button>
+    </div>
+    <div class="shared-clock" aria-live="polite">
+        <span>SHARED TIME</span>
+        <strong>@Playback.DisplayTime.ToString("D2")</strong>
+        <small>/ @Playback.MaxTime ticks</small>
+    </div>
+    <label class="speed-control">
+        <span>Replay speed</span>
+        <select aria-label="Synchronized replay speed" value="@Playback.Speed" @onchange="SpeedChanged">
+            <option value="0.5">0.5×</option>
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+        </select>
+    </label>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required ComparisonPlayback Playback { get; set; }
+
+    [Parameter] public EventCallback Start { get; set; }
+    [Parameter] public EventCallback Pause { get; set; }
+    [Parameter] public EventCallback Resume { get; set; }
+    [Parameter] public EventCallback Step { get; set; }
+    [Parameter] public EventCallback Restart { get; set; }
+    [Parameter] public EventCallback<double> SpeedSet { get; set; }
+
+    private Task SpeedChanged(ChangeEventArgs args)
+    {
+        var speed = double.Parse(args.Value?.ToString() ?? "1", System.Globalization.CultureInfo.InvariantCulture);
+        return SpeedSet.InvokeAsync(speed);
+    }
+}

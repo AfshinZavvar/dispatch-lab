@@ -1,0 +1,47 @@
+<section class="metrics-detail" aria-labelledby="job-metrics-title">
+    <div class="subsection-heading">
+        <div>
+            <span class="eyebrow">Per-job accounting</span>
+            <h3 id="job-metrics-title">Timing metrics</h3>
+        </div>
+        <span>Wait = turnaround − burst</span>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">Job</th>
+                    <th scope="col">Arrive</th>
+                    <th scope="col">Burst</th>
+                    <th scope="col">First start</th>
+                    <th scope="col">Complete</th>
+                    <th scope="col">CPU time</th>
+                    <th scope="col">Turnaround</th>
+                    <th scope="col">Waiting</th>
+                    <th scope="col">Response</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var metric in Result.JobMetrics)
+                {
+                    <tr>
+                        <th scope="row"><span class="job-id">@metric.JobId</span></th>
+                        <td>@metric.ArrivalTime</td>
+                        <td>@metric.BurstTime</td>
+                        <td>@metric.FirstStartTime</td>
+                        <td>@metric.CompletionTime</td>
+                        <td>@metric.CpuExecutionTime</td>
+                        <td>@metric.TurnaroundTime</td>
+                        <td>@metric.WaitingTime</td>
+                        <td>@metric.ResponseTime</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SchedulingResult Result { get; set; }
+}

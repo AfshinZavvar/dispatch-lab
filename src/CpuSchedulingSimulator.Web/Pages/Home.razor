@@ -1,0 +1,508 @@
+@page "/"
+@implements IDisposable
+@inject IAlgorithmCatalog AlgorithmCatalog
+@inject SimulationRunner SimulationRunner
+
+<PageTitle>Dispatch Lab — CPU Scheduler Debugger</PageTitle>
+
+<section class="hero">
+    <div class="hero-copy">
+        <span class="eyebrow">Operating systems · scheduling laboratory</span>
+        <h1>Watch the exact moment<br /><em>a scheduler changes its mind.</em></h1>
+        <p>Build one workload, run nine policies, then trace every arrival, dispatch, preemption, queue return, idle gap, and completion.</p>
+    </div>
+    <div class="hero-register" aria-label="Simulator capabilities">
+        <span><strong>09</strong> algorithms</span>
+        <span><strong>01</strong> logical CPU</span>
+        <span><strong>∞</strong> repeatable seeds</span>
+        <small>Same input + options = same complete event stream</small>
+    </div>
+</section>
+
+@if (comparison is null)
+{
+    <section class="setup-grid" aria-label="Simulation setup">
+        <div class="setup-main">
+            <JobEditor Jobs="jobs" />
+            <AlgorithmSelector Algorithms="algorithms" Selected="selectedAlgorithms" Toggled="ToggleAlgorithm" />
+
+            <section class="build-panel panel" aria-labelledby="build-title">
+                <div class="build-copy">
+                    <span class="eyebrow">04 · Calculate</span>
+                    <h2 id="build-title">Build the selected scheduler traces</h2>
+                    <p>All selected policies will be calculated against the same workload, then opened together on one synchronized time axis.</p>
+                    <div class="selected-policy-summary">
+                        <span>@selectedAlgorithms.Count selected</span>
+                        <strong>@SelectedAlgorithmNames</strong>
+                    </div>
+                </div>
+
+                @if (errors.Count > 0)
+                {
+                    <div class="validation-summary" role="alert">
+                        <strong>Check the simulation input</strong>
+                        <ul>
+                            @foreach (var error in errors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <div class="build-actions">
+                    <button class="build-traces-button" type="button" @onclick="RunSimulation" disabled="@(selectedAlgorithms.Count == 0)">
+                        <span aria-hidden="true">▶</span>
+                        <span>
+                            <strong>Build @selectedAlgorithms.Count scheduler trace@(selectedAlgorithms.Count == 1 ? null : "s")</strong>
+                            <small>@(selectedAlgorithms.Count == 0 ? "Select at least one policy above" : "Then compare them on a shared clock")</small>
+                        </span>
+                    </button>
+                    <button type="button" @onclick="ResetAll">Reset all inputs</button>
+                </div>
+            </section>
+        </div>
+
+        <aside class="control-console panel" aria-labelledby="console-title">
+            <span class="eyebrow">03 · Options</span>
+            <h2 id="console-title">Simulation options</h2>
+
+            <div class="seed-block">
+                <label for="seed">Deterministic seed</label>
+                <div class="input-action">
+                    <input id="seed" type="number" @bind="seed" />
+                    <button type="button" @onclick="LoadSeed">Load seed</button>
+                </div>
+                <button class="text-button" type="button" @onclick="Regenerate"><span aria-hidden="true">↻</span> Regenerate with next seed</button>
+            </div>
+
+            @if (selectedAlgorithms.Contains(SchedulingAlgorithmId.RoundRobin))
+            {
+                <fieldset class="option-group">
+                    <legend>Round Robin</legend>
+                    <label for="rr-quantum">Quantum <input id="rr-quantum" type="number" min="1" max="1000" @bind="options.RoundRobinQuantum" /></label>
+                </fieldset>
+            }
+
+            @if (selectedAlgorithms.Contains(SchedulingAlgorithmId.MultiLevelQueue))
+            {
+                <fieldset class="option-group">
+                    <legend>Multilevel Queue</legend>
+                    <label for="mlq-q0">Q0 quantum <input id="mlq-q0" type="number" min="1" max="1000" @bind="options.MultiLevelQueueHighQuantum" /></label>
+                    <label for="mlq-q1">Q1 quantum <input id="mlq-q1" type="number" min="1" max="1000" @bind="options.MultiLevelQueueNormalQuantum" /></label>
+                    <small>Q2 uses FCFS. Higher queues preempt lower queues.</small>
+                </fieldset>
+            }
+
+            @if (selectedAlgorithms.Contains(SchedulingAlgorithmId.MultiLevelFeedbackQueue))
+            {
+                <fieldset class="option-group">
+                    <legend>MLFQ</legend>
+                    <div class="triple-input">
+                        <label for="mlfq-q0">Q0 <input id="mlfq-q0" type="number" min="1" max="1000" @bind="options.MlfqHighQuantum" /></label>
+                        <label for="mlfq-q1">Q1 <input id="mlfq-q1" type="number" min="1" max="1000" @bind="options.MlfqNormalQuantum" /></label>
+                        <label for="mlfq-q2">Q2 <input id="mlfq-q2" type="number" min="1" max="1000" @bind="options.MlfqLowQuantum" /></label>
+                    </div>
+                    <label for="mlfq-boost">Priority boost <input id="mlfq-boost" type="number" min="1" max="100000" @bind="options.MlfqBoostInterval" /></label>
+                </fieldset>
+            }
+
+            <dl class="semantics-readout">
+                <div><dt>Time</dt><dd>integer ticks</dd></div>
+                <div><dt>Ties</dt><dd>arrival → ID</dd></div>
+                <div><dt>Intervals</dt><dd>[start, end)</dd></div>
+                <div><dt>Priority</dt><dd>1 is highest</dd></div>
+            </dl>
+        </aside>
+    </section>
+}
+else
+{
+    <section class="experiment-summary" aria-label="Current experiment summary">
+        <div>
+            <span class="eyebrow">Experiment locked for replay</span>
+            <h2>@comparison.Results.Count trace@(comparison.Results.Count == 1 ? null : "s") · @comparison.Jobs.Count jobs · seed @seed</h2>
+            <p>@string.Join(" · ", comparison.Results.Select(result => result.Algorithm.ShortName))</p>
+        </div>
+        <button type="button" class="edit-experiment-button" @onclick="EditExperiment">Edit workload and policies</button>
+    </section>
+}
+
+@if (comparison is not null)
+{
+    <section class="results" id="results">
+        <div class="results-intro">
+            <span class="eyebrow">05 · Compare</span>
+            <h2 @ref="resultsHeading" tabindex="-1">Recorded scheduler traces</h2>
+            <p>The algorithms have already finished calculating. One playback clock now reveals every selected trace at the same absolute tick.</p>
+        </div>
+
+        @if (comparison.Results.Count > 1 && comparisonPlayback is not null)
+        {
+            <ComparisonTheater Comparison="comparison"
+                               Playback="comparisonPlayback"
+                               Start="StartComparison"
+                               Pause="PauseComparison"
+                               Resume="ResumeComparison"
+                               Step="StepComparison"
+                               Restart="RestartComparison"
+                               SpeedSet="SetComparisonSpeed"
+                               Inspect="InspectAlgorithm" />
+        }
+        else if (ActiveResult is { } activeResult && ActivePlayback is { } activePlayback)
+        {
+            <SchedulerDebugger Result="activeResult"
+                               Playback="activePlayback"
+                               Start="StartPlayback"
+                               Pause="PausePlayback"
+                               Resume="ResumePlayback"
+                               Step="StepPlayback"
+                               Restart="RestartPlayback"
+                               SpeedSet="SetPlaybackSpeed" />
+        }
+
+        @if (FocusedResult is { } focusedResult && FocusedPlayback is { } focusedPlayback)
+        {
+            <section class="deep-inspector" aria-labelledby="deep-inspector-title">
+                <div class="deep-inspector-heading">
+                    <div>
+                        <span class="eyebrow">Focused inspection</span>
+                        <h2 id="deep-inspector-title">@focusedResult.Algorithm.ShortName event debugger</h2>
+                    </div>
+                    <button type="button" @onclick="CloseInspector">Close detailed view</button>
+                </div>
+                <SchedulerDebugger Result="focusedResult"
+                                   Playback="focusedPlayback"
+                                   Start="StartPlayback"
+                                   Pause="PausePlayback"
+                                   Resume="ResumePlayback"
+                                   Step="StepPlayback"
+                                   Restart="RestartPlayback"
+                                   SpeedSet="SetPlaybackSpeed" />
+            </section>
+        }
+
+        @if (comparison.Results.Count > 1)
+        {
+            <ComparisonTable Results="comparison.Results" />
+        }
+    </section>
+}
+else
+{
+    <section class="empty-workbench" aria-label="Simulation not yet run">
+        <span class="empty-rail" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <div>
+            <span class="eyebrow">Workbench waiting</span>
+            <h2>Choose policies, then build their traces.</h2>
+            <p>The shared timeline, synchronized ready queues, CPU states, event explanations, and metrics will appear here.</p>
+        </div>
+    </section>
+}
+
+@code {
+    private readonly HashSet<SchedulingAlgorithmId> selectedAlgorithms =
+    [
+        SchedulingAlgorithmId.FirstComeFirstServed,
+        SchedulingAlgorithmId.ShortestRemainingTimeFirst,
+        SchedulingAlgorithmId.RoundRobin,
+    ];
+
+    private readonly EditableSchedulingOptions options = new();
+    private IReadOnlyList<SchedulingAlgorithmMetadata> algorithms = [];
+    private List<EditableJob> jobs = [];
+    private IReadOnlyList<string> errors = [];
+    private SimulationComparison? comparison;
+    private ComparisonPlayback? comparisonPlayback;
+    private Dictionary<SchedulingAlgorithmId, SimulationPlayback> playbacks = [];
+    private SchedulingAlgorithmId activeAlgorithm;
+    private SchedulingAlgorithmId? focusedAlgorithm;
+    private int seed = SeededJobGenerator.DefaultSeed;
+    private CancellationTokenSource? playbackCancellation;
+    private ElementReference resultsHeading;
+    private bool focusResultsAfterRender;
+
+    private string SelectedAlgorithmNames => selectedAlgorithms.Count == 0
+        ? "No policies selected yet"
+        : string.Join(" · ", algorithms.Where(algorithm => selectedAlgorithms.Contains(algorithm.Id)).Select(algorithm => algorithm.ShortName));
+
+    private SchedulingResult? ActiveResult => comparison?.Results.SingleOrDefault(result => result.Algorithm.Id == activeAlgorithm);
+
+    private SimulationPlayback? ActivePlayback => playbacks.GetValueOrDefault(activeAlgorithm);
+
+    private SchedulingResult? FocusedResult => focusedAlgorithm is { } id
+        ? comparison?.Results.SingleOrDefault(result => result.Algorithm.Id == id)
+        : null;
+
+    private SimulationPlayback? FocusedPlayback => focusedAlgorithm is { } id
+        ? playbacks.GetValueOrDefault(id)
+        : null;
+
+    protected override void OnInitialized()
+    {
+        algorithms = AlgorithmCatalog.All.Select(algorithm => algorithm.Metadata).ToArray();
+        LoadJobs(seed);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!focusResultsAfterRender)
+        {
+            return;
+        }
+
+        focusResultsAfterRender = false;
+        await resultsHeading.FocusAsync();
+    }
+
+    private void ToggleAlgorithm(SchedulingAlgorithmId id)
+    {
+        if (!selectedAlgorithms.Add(id))
+        {
+            selectedAlgorithms.Remove(id);
+        }
+
+        errors = [];
+    }
+
+    private void LoadSeed() => LoadJobs(seed);
+
+    private void Regenerate()
+    {
+        seed++;
+        LoadJobs(seed);
+    }
+
+    private void LoadJobs(int selectedSeed)
+    {
+        StopPlaybackPump();
+        jobs = SeededJobGenerator.Generate(selectedSeed).Select(EditableJob.FromDomain).ToList();
+        comparison = null;
+        comparisonPlayback = null;
+        focusedAlgorithm = null;
+        playbacks = [];
+        errors = [];
+    }
+
+    private void ResetAll()
+    {
+        seed = SeededJobGenerator.DefaultSeed;
+        selectedAlgorithms.Clear();
+        selectedAlgorithms.UnionWith(
+        [
+            SchedulingAlgorithmId.FirstComeFirstServed,
+            SchedulingAlgorithmId.ShortestRemainingTimeFirst,
+            SchedulingAlgorithmId.RoundRobin,
+        ]);
+        LoadJobs(seed);
+    }
+
+    private void RunSimulation()
+    {
+        StopPlaybackPump();
+        try
+        {
+            var request = new SimulationRequest(
+                jobs.Select(job => job.ToDomain()).ToArray(),
+                algorithms
+                    .Where(algorithm => selectedAlgorithms.Contains(algorithm.Id))
+                    .Select(algorithm => algorithm.Id)
+                    .ToArray(),
+                options.ToDomain());
+            comparison = SimulationRunner.Run(request);
+            comparisonPlayback = comparison.Results.Count > 1 ? new ComparisonPlayback(comparison) : null;
+            playbacks = comparison.Results.ToDictionary(
+                result => result.Algorithm.Id,
+                result => new SimulationPlayback(result));
+            activeAlgorithm = comparison.Results[0].Algorithm.Id;
+            focusedAlgorithm = null;
+            focusResultsAfterRender = true;
+            errors = [];
+        }
+        catch (ArgumentException exception)
+        {
+            comparison = null;
+            comparisonPlayback = null;
+            focusedAlgorithm = null;
+            playbacks = [];
+            errors = exception.Message.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        }
+    }
+
+    private void EditExperiment()
+    {
+        StopPlaybackPump();
+        comparison = null;
+        comparisonPlayback = null;
+        focusedAlgorithm = null;
+        playbacks = [];
+        errors = [];
+    }
+
+    private void InspectAlgorithm(SchedulingAlgorithmId id)
+    {
+        PauseComparison();
+        activeAlgorithm = id;
+        focusedAlgorithm = id;
+    }
+
+    private void CloseInspector()
+    {
+        StopPlaybackPump();
+        focusedAlgorithm = null;
+    }
+
+    private async Task StartComparison()
+    {
+        if (comparisonPlayback is not { } playback)
+        {
+            return;
+        }
+
+        StopPlaybackPump();
+        playback.Start();
+        await PumpPlayback(playback);
+    }
+
+    private void PauseComparison()
+    {
+        comparisonPlayback?.Pause();
+        StopPlaybackPump();
+    }
+
+    private async Task ResumeComparison()
+    {
+        if (comparisonPlayback is not { } playback)
+        {
+            return;
+        }
+
+        StopPlaybackPump();
+        playback.Resume();
+        await PumpPlayback(playback);
+    }
+
+    private void StepComparison()
+    {
+        StopPlaybackPump();
+        comparisonPlayback?.StepToNextDecision();
+    }
+
+    private void RestartComparison()
+    {
+        StopPlaybackPump();
+        comparisonPlayback?.Restart();
+    }
+
+    private void SetComparisonSpeed(double speed) => comparisonPlayback?.SetSpeed(speed);
+
+    private async Task StartPlayback()
+    {
+        if (ActivePlayback is not { } playback)
+        {
+            return;
+        }
+
+        StopPlaybackPump();
+        playback.Start();
+        await PumpPlayback(playback);
+    }
+
+    private void PausePlayback()
+    {
+        ActivePlayback?.Pause();
+        StopPlaybackPump();
+    }
+
+    private async Task ResumePlayback()
+    {
+        if (ActivePlayback is not { } playback)
+        {
+            return;
+        }
+
+        StopPlaybackPump();
+        playback.Resume();
+        await PumpPlayback(playback);
+    }
+
+    private void StepPlayback()
+    {
+        StopPlaybackPump();
+        ActivePlayback?.StepForward();
+    }
+
+    private void RestartPlayback()
+    {
+        StopPlaybackPump();
+        ActivePlayback?.Restart();
+    }
+
+    private void SetPlaybackSpeed(double speed) => ActivePlayback?.SetSpeed(speed);
+
+    private async Task PumpPlayback(ComparisonPlayback playback)
+    {
+        var cancellation = new CancellationTokenSource();
+        playbackCancellation = cancellation;
+        try
+        {
+            while (playback.Status == PlaybackStatus.Playing)
+            {
+                await Task.Delay(playback.TimerDelayMilliseconds, cancellation.Token);
+                playback.AdvanceTimer();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            ReleasePlaybackCancellation(cancellation);
+        }
+    }
+
+    private async Task PumpPlayback(SimulationPlayback playback)
+    {
+        var cancellation = new CancellationTokenSource();
+        playbackCancellation = cancellation;
+        try
+        {
+            while (playback.Status == PlaybackStatus.Playing)
+            {
+                await Task.Delay(playback.TimerDelayMilliseconds, cancellation.Token);
+                playback.AdvanceTimer();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            ReleasePlaybackCancellation(cancellation);
+        }
+    }
+
+    private void ReleasePlaybackCancellation(CancellationTokenSource cancellation)
+    {
+        if (ReferenceEquals(playbackCancellation, cancellation))
+        {
+            playbackCancellation = null;
+        }
+
+        cancellation.Dispose();
+    }
+
+    private void StopPlaybackPump()
+    {
+        playbackCancellation?.Cancel();
+        playbackCancellation = null;
+    }
+
+    public void Dispose()
+    {
+        StopPlaybackPump();
+        GC.SuppressFinalize(this);
+    }
+}

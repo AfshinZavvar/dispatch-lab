@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CpuSchedulingSimulator.Application/CpuSchedulingSimulator.Application.csproj" />
+    <Project Path="src/CpuSchedulingSimulator.Domain/CpuSchedulingSimulator.Domain.csproj" />
+    <Project Path="src/CpuSchedulingSimulator.Web/CpuSchedulingSimulator.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CpuSchedulingSimulator.Application.Tests/CpuSchedulingSimulator.Application.Tests.csproj" />
+    <Project Path="tests/CpuSchedulingSimulator.Domain.Tests/CpuSchedulingSimulator.Domain.Tests.csproj" />
+    <Project Path="tests/CpuSchedulingSimulator.Web.Tests/CpuSchedulingSimulator.Web.Tests.csproj" />
+  </Folder>
+</Solution>

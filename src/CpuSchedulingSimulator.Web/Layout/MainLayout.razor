@@ -1,0 +1,25 @@
+﻿@inherits LayoutComponentBase
+
+<a class="skip-link" href="#main-content">Skip to simulator</a>
+<header class="site-header">
+    <a class="brand" href="/" aria-label="Dispatch Lab home">
+        <span class="brand-mark" aria-hidden="true">DL</span>
+        <span>
+            <strong>Dispatch Lab</strong>
+            <small>CPU scheduler debugger</small>
+        </span>
+    </a>
+    <div class="header-readout" aria-label="Simulation model">
+        <span class="status-light" aria-hidden="true"></span>
+        1 logical CPU · discrete ticks · deterministic replay
+    </div>
+</header>
+
+<main id="main-content">
+    @Body
+</main>
+
+<footer class="site-footer">
+    <span>Scheduling is calculated once. Every animation replays the recorded event stream.</span>
+    <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/cpu-sched-mlfq.pdf" target="_blank" rel="noreferrer">Read the MLFQ reference <span aria-hidden="true">↗</span></a>
+</footer>

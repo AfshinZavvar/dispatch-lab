@@ -1,0 +1,90 @@
+@{
+    var snapshot = Playback.GetSnapshot(Result);
+    var runningJobId = Playback.GetRunningJobId(Result);
+    var currentEvent = Playback.GetCurrentEvent(Result);
+    var isFinished = Playback.CurrentTime >= Result.Metrics.Makespan;
+}
+
+<article class="compact-debugger @(isFinished ? "is-finished" : null)" data-algorithm="@Result.Algorithm.Id">
+    <header>
+        <div>
+            <span class="mode-tag-inline">@(Result.Algorithm.IsPreemptive ? "preemptive" : "non-preemptive")</span>
+            <h3>@Result.Algorithm.ShortName</h3>
+            <small>@Result.Algorithm.Name</small>
+        </div>
+        <button type="button" class="inspect-button" @onclick="() => Inspect.InvokeAsync(Result.Algorithm.Id)">Inspect events <span aria-hidden="true">↗</span></button>
+    </header>
+
+    <div class="compact-decision" role="status">
+        <span>@(currentEvent is null ? "WAITING TO START" : FormatKind(currentEvent.Kind))</span>
+        <p>@(currentEvent?.Explanation ?? "Ready on the shared clock.")</p>
+    </div>
+
+    <div class="compact-machine">
+        <section aria-label="@Result.Algorithm.ShortName ready queue">
+            <span class="compact-label">READY</span>
+            <div class="compact-queue">
+                @if (snapshot.ReadyQueue.Count == 0)
+                {
+                    <small>empty</small>
+                }
+                else
+                {
+                    @foreach (var jobId in snapshot.ReadyQueue)
+                    {
+                        <span class="job-tone-@Tone(jobId)"><strong>@jobId</strong><small>@Playback.GetRemainingTime(Result, jobId) left</small></span>
+                    }
+                }
+            </div>
+        </section>
+
+        <section class="compact-cpu @(runningJobId is null ? "is-idle" : null)" aria-label="@Result.Algorithm.ShortName CPU">
+            <span class="compact-label">CPU</span>
+            @if (runningJobId is not null)
+            {
+                <strong class="job-tone-@Tone(runningJobId)">@runningJobId</strong>
+                <small>@Playback.GetRemainingTime(Result, runningJobId) ticks left</small>
+            }
+            else
+            {
+                <strong>○</strong>
+                <small>@(isFinished ? "finished" : "idle")</small>
+            }
+        </section>
+
+        <section aria-label="@Result.Algorithm.ShortName completed jobs">
+            <span class="compact-label">DONE</span>
+            <div class="compact-completed">
+                <strong>@snapshot.CompletedJobIds.Count / @Result.Jobs.Count</strong>
+                <small>@string.Join(" · ", snapshot.CompletedJobIds)</small>
+            </div>
+        </section>
+    </div>
+
+    <dl class="compact-metrics">
+        <div><dt>Wait</dt><dd>@Result.Metrics.AverageWaitingTime.ToString("F1")</dd></div>
+        <div><dt>Response</dt><dd>@Result.Metrics.AverageResponseTime.ToString("F1")</dd></div>
+        <div><dt>Switches</dt><dd>@Result.Metrics.ContextSwitches</dd></div>
+        <div><dt>Finish</dt><dd>@Result.Metrics.Makespan</dd></div>
+    </dl>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SchedulingResult Result { get; set; }
+
+    [Parameter, EditorRequired]
+    public required ComparisonPlayback Playback { get; set; }
+
+    [Parameter]
+    public EventCallback<SchedulingAlgorithmId> Inspect { get; set; }
+
+    private static int Tone(string id)
+    {
+        var digits = new string(id.Where(char.IsDigit).ToArray());
+        return int.TryParse(digits, out var number) ? ((number - 1) % 5) + 1 : 1;
+    }
+
+    private static string FormatKind(SimulationEventKind kind) => string.Concat(kind.ToString().Select((character, index) =>
+        index > 0 && char.IsUpper(character) ? $" {character}" : character.ToString())).ToUpperInvariant();
+}

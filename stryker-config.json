@@ -1,0 +1,30 @@
+{
+  "stryker-config": {
+    "project": "src/CpuSchedulingSimulator.Domain/CpuSchedulingSimulator.Domain.csproj",
+    "test-projects": [
+      "tests/CpuSchedulingSimulator.Domain.Tests/CpuSchedulingSimulator.Domain.Tests.csproj"
+    ],
+    "test-runner": "mtp",
+    "coverage-analysis": "off",
+    "mutate": [
+      "Engine/OrderedPolicyBase.cs",
+      "Engine/FirstComeFirstServedPolicy.cs",
+      "Engine/ShortestJobFirstPolicy.cs",
+      "Engine/ShortestRemainingTimeFirstPolicy.cs",
+      "Engine/PriorityPolicy.cs",
+      "Engine/HighestResponseRatioNextPolicy.cs",
+      "Engine/RoundRobinPolicy.cs",
+      "Engine/MultiLevelQueuePolicy.cs",
+      "Engine/MultiLevelFeedbackQueuePolicy.cs",
+      "Engine/SchedulingResultFactory.cs",
+      "Engine/SimulationRecorder.cs",
+      "Engine/TickSchedulingEngine.cs"
+    ],
+    "reporters": [
+      "progress",
+      "json",
+      "markdown"
+    ],
+    "concurrency": 4
+  }
+}

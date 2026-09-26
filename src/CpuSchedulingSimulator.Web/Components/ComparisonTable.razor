@@ -1,0 +1,53 @@
+<section class="comparison-panel panel" aria-labelledby="comparison-title">
+    <div class="panel-heading">
+        <div>
+            <span class="eyebrow">Outcome comparison</span>
+            <h2 id="comparison-title">Same jobs. Different policy.</h2>
+        </div>
+        <span class="panel-hint">Lower averages are not the only goal</span>
+    </div>
+    <div class="table-scroll">
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th scope="col">Algorithm</th>
+                    <th scope="col">Avg wait</th>
+                    <th scope="col">Avg turnaround</th>
+                    <th scope="col">Avg response</th>
+                    <th scope="col">CPU use</th>
+                    <th scope="col">Throughput</th>
+                    <th scope="col">Switches</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var result in Results)
+                {
+                    <tr>
+                        <th scope="row"><strong>@result.Algorithm.ShortName</strong><small>@result.Algorithm.Name</small></th>
+                        <td>@result.Metrics.AverageWaitingTime.ToString("F2")</td>
+                        <td>@result.Metrics.AverageTurnaroundTime.ToString("F2")</td>
+                        <td>@result.Metrics.AverageResponseTime.ToString("F2")</td>
+                        <td>@result.Metrics.CpuUtilizationPercent.ToString("F1")%</td>
+                        <td>@result.Metrics.ThroughputPerTick.ToString("F3")</td>
+                        <td>@result.Metrics.ContextSwitches</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="tradeoff-grid">
+        @foreach (var result in Results)
+        {
+            <article>
+                <strong>@result.Algorithm.ShortName</strong>
+                <p>@result.Algorithm.TradeOff</p>
+            </article>
+        }
+    </div>
+    <p class="comparison-note"><span aria-hidden="true">◇</span> “Best” depends on the workload and objective: turnaround, responsiveness, fairness, predictability, or overhead.</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<SchedulingResult> Results { get; set; }
+}

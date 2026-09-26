@@ -1,0 +1,78 @@
+@{
+    var makespan = Math.Max(1, Result.Metrics.Makespan);
+}
+
+<section class="timeline-panel" aria-labelledby="timeline-title">
+    <div class="subsection-heading">
+        <div>
+            <span class="eyebrow">Execution record</span>
+            <h3 id="timeline-title">Timeline / Gantt rail</h3>
+        </div>
+        <span>Half-open intervals [start, end)</span>
+    </div>
+    <div class="timeline-scroll">
+        <svg class="gantt" viewBox="0 0 1000 132" role="img" aria-labelledby="gantt-title gantt-description" preserveAspectRatio="none">
+            <title id="gantt-title">@Result.Algorithm.ShortName execution timeline</title>
+            <desc id="gantt-description">A graphical timeline from time zero through @Result.Metrics.Makespan with @Result.ExecutionSlices.Count execution and idle segments.</desc>
+            <line class="gantt-axis" x1="20" y1="104" x2="980" y2="104" />
+            @for (var tick = 0; tick <= makespan; tick++)
+            {
+                var tickX = 20 + (tick * 960.0 / makespan);
+                <line class="gantt-tick" x1="@tickX" y1="101" x2="@tickX" y2="110" />
+                @if (makespan <= 24 || tick % Math.Max(1, makespan / 12) == 0 || tick == makespan)
+                {
+                    <foreignObject x="@(tickX - 20)" y="112" width="40" height="18">
+                        <div class="gantt-tick-label">@tick</div>
+                    </foreignObject>
+                }
+            }
+            @foreach (var slice in Result.ExecutionSlices)
+            {
+                var x = 20 + (slice.StartTime * 960.0 / makespan);
+                var width = Math.Max(2, slice.Duration * 960.0 / makespan);
+                var isCurrent = CurrentTime >= slice.StartTime && CurrentTime <= slice.EndTime;
+                <g class="gantt-segment @(slice.IsIdle ? "is-idle" : $"job-tone-{Tone(slice.JobId!)}") @(isCurrent ? "is-current" : null)">
+                    <title>@(slice.IsIdle ? "CPU idle" : slice.JobId): @slice.StartTime–@slice.EndTime (@slice.Duration ticks), @slice.EndReason</title>
+                    <rect x="@x" y="28" width="@width" height="58" rx="4" />
+                    @if (width > 34)
+                    {
+                        <foreignObject x="@x" y="38" width="@width" height="42">
+                            <div class="segment-label">
+                                <strong>@(slice.IsIdle ? "IDLE" : slice.JobId)</strong>
+                                <small>@slice.StartTime–@slice.EndTime</small>
+                            </div>
+                        </foreignObject>
+                    }
+                </g>
+            }
+            @{ var cursorX = 20 + (Math.Clamp(CurrentTime, 0, makespan) * 960.0 / makespan); }
+            <g class="time-cursor">
+                <line x1="@cursorX" y1="12" x2="@cursorX" y2="105" />
+                <path d="M @(cursorX - 5) 12 L @(cursorX + 5) 12 L @cursorX 20 Z" />
+            </g>
+        </svg>
+    </div>
+    <div class="slice-ledger" aria-label="Timeline segment details">
+        @foreach (var slice in Result.ExecutionSlices)
+        {
+            <span class="@(slice.IsIdle ? "is-idle" : null)">
+                <strong>@(slice.IsIdle ? "IDLE" : slice.JobId)</strong>
+                <small>@slice.StartTime → @slice.EndTime · @slice.Duration tick@(slice.Duration == 1 ? null : "s")</small>
+            </span>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SchedulingResult Result { get; set; }
+
+    [Parameter]
+    public int CurrentTime { get; set; }
+
+    private static int Tone(string id)
+    {
+        var digits = new string(id.Where(char.IsDigit).ToArray());
+        return int.TryParse(digits, out var number) ? ((number - 1) % 5) + 1 : 1;
+    }
+}

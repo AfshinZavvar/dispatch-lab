@@ -1,0 +1,85 @@
+@{
+    const double labelWidth = 150;
+    const double chartLeft = 165;
+    const double chartWidth = 810;
+    const double laneHeight = 76;
+    var makespan = Math.Max(1, Playback.MaxTime);
+    var height = 40 + (Results.Count * laneHeight) + 44;
+    var axisY = 28 + (Results.Count * laneHeight);
+    var cursorX = chartLeft + (Math.Clamp(Playback.DisplayTime, 0, makespan) * chartWidth / makespan);
+}
+
+<section class="multi-lane-panel" aria-labelledby="shared-axis-title">
+    <div class="subsection-heading">
+        <div>
+            <span class="eyebrow">Shared execution axis</span>
+            <h3 id="shared-axis-title">Every selected algorithm, one clock</h3>
+        </div>
+        <span>Absolute ticks · identical workload</span>
+    </div>
+    <div class="timeline-scroll">
+        <svg class="multi-lane-gantt" viewBox="0 0 1000 @height" role="img" aria-labelledby="multi-title multi-description" preserveAspectRatio="none">
+            <title id="multi-title">Synchronized algorithm timelines</title>
+            <desc id="multi-description">@Results.Count algorithm lanes use the same time axis from zero through @Playback.MaxTime ticks.</desc>
+            @for (var laneIndex = 0; laneIndex < Results.Count; laneIndex++)
+            {
+                var result = Results[laneIndex];
+                var laneY = 20 + (laneIndex * laneHeight);
+                <g class="algorithm-lane" data-algorithm="@result.Algorithm.Id">
+                    <rect class="lane-background" x="@chartLeft" y="@laneY" width="@chartWidth" height="58" />
+                    <foreignObject x="0" y="@laneY" width="@labelWidth" height="58">
+                        <div class="lane-label">
+                            <strong>@result.Algorithm.ShortName</strong>
+                            <span>@result.Metrics.Makespan ticks · @result.Metrics.ContextSwitches switches</span>
+                        </div>
+                    </foreignObject>
+                    @foreach (var slice in result.ExecutionSlices)
+                    {
+                        var x = chartLeft + (slice.StartTime * chartWidth / makespan);
+                        var width = Math.Max(1.5, slice.Duration * chartWidth / makespan);
+                        <g class="lane-segment @(slice.IsIdle ? "is-idle" : $"job-tone-{Tone(slice.JobId!)}")">
+                            <title>@result.Algorithm.ShortName · @(slice.IsIdle ? "idle" : slice.JobId) · @slice.StartTime–@slice.EndTime</title>
+                            <rect x="@x" y="@(laneY + 7)" width="@width" height="44" rx="3" />
+                            @if (width > 28)
+                            {
+                                <foreignObject x="@x" y="@(laneY + 18)" width="@width" height="25">
+                                    <div class="lane-segment-label">@(slice.IsIdle ? "idle" : slice.JobId)</div>
+                                </foreignObject>
+                            }
+                        </g>
+                    }
+                </g>
+            }
+            <line class="shared-axis-line" x1="@chartLeft" y1="@axisY" x2="@(chartLeft + chartWidth)" y2="@axisY" />
+            @for (var tick = 0; tick <= makespan; tick++)
+            {
+                var tickX = chartLeft + (tick * chartWidth / makespan);
+                <line class="shared-axis-tick" x1="@tickX" y1="@axisY" x2="@tickX" y2="@(axisY + 8)" />
+                @if (makespan <= 24 || tick % Math.Max(1, makespan / 12) == 0 || tick == makespan)
+                {
+                    <foreignObject x="@(tickX - 18)" y="@(axisY + 10)" width="36" height="18">
+                        <div class="shared-axis-label">@tick</div>
+                    </foreignObject>
+                }
+            }
+            <g class="shared-time-cursor">
+                <line x1="@cursorX" y1="8" x2="@cursorX" y2="@axisY" />
+                <path d="M @(cursorX - 6) 8 L @(cursorX + 6) 8 L @cursorX 18 Z" />
+            </g>
+        </svg>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<SchedulingResult> Results { get; set; }
+
+    [Parameter, EditorRequired]
+    public required ComparisonPlayback Playback { get; set; }
+
+    private static int Tone(string id)
+    {
+        var digits = new string(id.Where(char.IsDigit).ToArray());
+        return int.TryParse(digits, out var number) ? ((number - 1) % 5) + 1 : 1;
+    }
+}

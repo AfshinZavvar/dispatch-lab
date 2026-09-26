@@ -1,0 +1,170 @@
+@{
+    var snapshot = Playback.CurrentSnapshot;
+    var current = Playback.CurrentEvent;
+    var time = current?.Time ?? 0;
+    var nextEvent = Playback.CurrentEventIndex + 1 < Result.Events.Count
+        ? Result.Events[Playback.CurrentEventIndex + 1]
+        : null;
+}
+
+<section class="debugger" aria-labelledby="debugger-title">
+    <div class="debugger-head">
+        <div>
+            <span class="eyebrow">Live event stream</span>
+            <h2 id="debugger-title">@Result.Algorithm.Name</h2>
+        </div>
+        <div class="clock" aria-label="Current simulation time">
+            <span>TIME</span>
+            <strong>@time.ToString("D2")</strong>
+            <small>ticks</small>
+        </div>
+    </div>
+
+    <PlaybackControls Playback="Playback"
+                      Start="Start"
+                      Pause="Pause"
+                      Resume="Resume"
+                      Step="Step"
+                      Restart="Restart"
+                      SpeedSet="SpeedSet" />
+
+    <div class="playback-progress" aria-hidden="true">
+        <span style="width: @(Playback.ProgressPercent.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span>
+    </div>
+
+    <div class="event-explanation" role="status" aria-live="polite">
+        <span class="event-kind">@(current is null ? "READY TO TRACE" : FormatKind(current.Kind))</span>
+        <p>@(current?.Explanation ?? "Press Start or Step to admit the first jobs and inspect every dispatch decision.")</p>
+        <span class="next-event">Next: @(nextEvent?.Explanation ?? "The recorded schedule is complete.")</span>
+    </div>
+
+    <div class="dispatch-stage @(current?.Kind == SimulationEventKind.JobPreempted ? "is-preempting" : null)">
+        <section class="queue-bay" aria-labelledby="ready-queue-title">
+            <div class="stage-label"><span aria-hidden="true">☷</span> <span id="ready-queue-title">Ready queue</span></div>
+            <div class="queue-track" data-testid="ready-queue">
+                @if (snapshot.ReadyQueue.Count == 0)
+                {
+                    <span class="empty-state">No jobs waiting</span>
+                }
+                else
+                {
+                    @for (var index = 0; index < snapshot.ReadyQueue.Count; index++)
+                    {
+                        var jobId = snapshot.ReadyQueue[index];
+                        <span class="queue-job job-tone-@Tone(jobId)">
+                            <small>#@(index + 1)</small>
+                            <strong>@jobId</strong>
+                            <span>@Remaining(jobId, snapshot) left</span>
+                        </span>
+                    }
+                }
+            </div>
+        </section>
+
+        <div class="dispatch-gate" aria-label="Selected job">
+            <span class="gate-line" aria-hidden="true"></span>
+            <span class="gate-label">DISPATCH</span>
+            @if (snapshot.SelectedJobId is not null)
+            {
+                <span class="selected-job job-tone-@Tone(snapshot.SelectedJobId)"><strong>@snapshot.SelectedJobId</strong><small>selected</small></span>
+            }
+            else
+            {
+                <span class="gate-idle" aria-hidden="true">→</span>
+            }
+        </div>
+
+        <section class="cpu-chamber @(snapshot.RunningJobId is null ? "is-idle" : "is-running")" aria-labelledby="cpu-title">
+            <div class="stage-label"><span aria-hidden="true">▣</span> <span id="cpu-title">CPU</span></div>
+            @if (snapshot.RunningJobId is { } runningId)
+            {
+                var runningJob = Result.Jobs.Single(job => job.Id == runningId);
+                var remaining = Remaining(runningId, snapshot);
+                <div class="cpu-job job-tone-@Tone(runningId)" data-testid="running-job">
+                    <span class="running-flag"><span class="status-light" aria-hidden="true"></span> RUNNING</span>
+                    <strong>@runningId</strong>
+                    <div class="cpu-readouts">
+                        <span><small>Executed</small>@(runningJob.BurstTime - remaining)</span>
+                        <span><small>Remaining</small>@remaining</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="cpu-idle" data-testid="cpu-idle"><span aria-hidden="true">○</span><strong>CPU idle</strong><small>Waiting for a dispatch</small></div>
+            }
+            @if (current?.Kind == SimulationEventKind.JobPreempted)
+            {
+                <div class="preemption-loop"><span aria-hidden="true">↶</span> preempted · return to queue</div>
+            }
+        </section>
+
+        <section class="completed-bay" aria-labelledby="completed-title">
+            <div class="stage-label"><span aria-hidden="true">✓</span> <span id="completed-title">Completed</span></div>
+            <div class="completed-track" data-testid="completed-jobs">
+                @if (snapshot.CompletedJobIds.Count == 0)
+                {
+                    <span class="empty-state">No finishes yet</span>
+                }
+                else
+                {
+                    @foreach (var jobId in snapshot.CompletedJobIds)
+                    {
+                        <span class="completed-job"><span aria-hidden="true">✓</span><strong>@jobId</strong></span>
+                    }
+                }
+            </div>
+        </section>
+    </div>
+
+    <div class="job-state-strip" aria-label="State of every job">
+        @foreach (var job in Result.Jobs)
+        {
+            var status = StatusFor(job, snapshot, time);
+            <div class="job-state @status.CssClass">
+                <strong>@job.Id</strong>
+                <span>@status.Label</span>
+                <small>@Remaining(job.Id, snapshot) / @job.BurstTime ticks left</small>
+            </div>
+        }
+    </div>
+
+    <TimelineView Result="Result" CurrentTime="time" />
+    <JobMetricsTable Result="Result" />
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SchedulingResult Result { get; set; }
+
+    [Parameter, EditorRequired]
+    public required SimulationPlayback Playback { get; set; }
+
+    [Parameter] public EventCallback Start { get; set; }
+    [Parameter] public EventCallback Pause { get; set; }
+    [Parameter] public EventCallback Resume { get; set; }
+    [Parameter] public EventCallback Step { get; set; }
+    [Parameter] public EventCallback Restart { get; set; }
+    [Parameter] public EventCallback<double> SpeedSet { get; set; }
+
+    private static int Remaining(string id, SchedulerSnapshot snapshot) =>
+        snapshot.RemainingTimes.TryGetValue(id, out var remaining) ? remaining : 0;
+
+    private static string FormatKind(SimulationEventKind kind) => string.Concat(kind.ToString().Select((character, index) =>
+        index > 0 && char.IsUpper(character) ? $" {character}" : character.ToString())).ToUpperInvariant();
+
+    private static int Tone(string id)
+    {
+        var number = new string(id.Where(char.IsDigit).ToArray());
+        return int.TryParse(number, out var parsed) ? ((parsed - 1) % 5) + 1 : 1;
+    }
+
+    private static (string Label, string CssClass) StatusFor(JobDefinition job, SchedulerSnapshot snapshot, int time)
+    {
+        if (snapshot.CompletedJobIds.Contains(job.Id, StringComparer.Ordinal)) return ("Completed", "is-completed");
+        if (StringComparer.Ordinal.Equals(snapshot.RunningJobId, job.Id)) return ("Running", "is-running");
+        if (StringComparer.Ordinal.Equals(snapshot.SelectedJobId, job.Id)) return ("Selected", "is-selected");
+        if (snapshot.ReadyQueue.Contains(job.Id, StringComparer.Ordinal)) return ("Waiting", "is-ready");
+        return time < job.ArrivalTime ? ("Not arrived", "is-future") : ("Observed", "is-observed");
+    }
+}

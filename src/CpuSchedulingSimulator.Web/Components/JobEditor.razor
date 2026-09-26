@@ -1,0 +1,58 @@
+<section class="panel workload-panel" aria-labelledby="workload-title">
+    <div class="panel-heading">
+        <div>
+            <span class="eyebrow">01 · Workload</span>
+            <h2 id="workload-title">Five jobs enter the system</h2>
+        </div>
+        <span class="panel-hint">Lower priority numbers run first</span>
+    </div>
+
+    <div class="table-scroll">
+        <table class="job-table">
+            <thead>
+                <tr>
+                    <th scope="col">Job</th>
+                    <th scope="col">Arrival</th>
+                    <th scope="col">Burst</th>
+                    <th scope="col">Priority</th>
+                    <th scope="col">MLQ class</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var job in Jobs)
+                {
+                    <tr data-job-id="@job.Id">
+                        <th scope="row"><span class="job-id">@job.Id</span></th>
+                        <td>
+                            <label class="sr-only" for="arrival-@job.Id">@job.Id arrival time</label>
+                            <input id="arrival-@job.Id" aria-label="@job.Id arrival time" type="number" min="0" max="10000" @bind="job.ArrivalTime" />
+                        </td>
+                        <td>
+                            <label class="sr-only" for="burst-@job.Id">@job.Id burst time</label>
+                            <input id="burst-@job.Id" aria-label="@job.Id burst time" type="number" min="1" max="1000" @bind="job.BurstTime" />
+                        </td>
+                        <td>
+                            <label class="sr-only" for="priority-@job.Id">@job.Id priority</label>
+                            <input id="priority-@job.Id" aria-label="@job.Id priority" type="number" min="1" max="99" @bind="job.Priority" />
+                        </td>
+                        <td>
+                            <label class="sr-only" for="queue-@job.Id">@job.Id fixed queue</label>
+                            <select id="queue-@job.Id" aria-label="@job.Id fixed queue" @bind="job.QueueLevel">
+                                <option value="0">Q0 · interactive</option>
+                                <option value="1">Q1 · standard</option>
+                                <option value="2">Q2 · background</option>
+                            </select>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <p class="field-note"><span aria-hidden="true">◆</span> Time is measured in abstract ticks. Each job has one CPU burst and no I/O.</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<EditableJob> Jobs { get; set; }
+}

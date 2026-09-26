@@ -1,0 +1,45 @@
+<section class="comparison-theater" aria-labelledby="comparison-theater-title">
+    <div class="theater-heading">
+        <div>
+            <span class="eyebrow">Synchronized comparison</span>
+            <h2 id="comparison-theater-title">Watch every scheduler at once.</h2>
+        </div>
+        <p>One clock drives every immutable trace. Each card shows what that policy believes at the same absolute tick.</p>
+    </div>
+
+    <ComparisonPlaybackControls Playback="Playback"
+                                Start="Start"
+                                Pause="Pause"
+                                Resume="Resume"
+                                Step="Step"
+                                Restart="Restart"
+                                SpeedSet="SpeedSet" />
+    <div class="playback-progress comparison-progress" aria-hidden="true">
+        <span style="width: @(Playback.ProgressPercent.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></span>
+    </div>
+
+    <MultiLaneTimeline Results="Comparison.Results" Playback="Playback" />
+
+    <div class="compact-debugger-grid">
+        @foreach (var result in Comparison.Results)
+        {
+            <CompactAlgorithmDebugger Result="result" Playback="Playback" Inspect="Inspect" />
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SimulationComparison Comparison { get; set; }
+
+    [Parameter, EditorRequired]
+    public required ComparisonPlayback Playback { get; set; }
+
+    [Parameter] public EventCallback Start { get; set; }
+    [Parameter] public EventCallback Pause { get; set; }
+    [Parameter] public EventCallback Resume { get; set; }
+    [Parameter] public EventCallback Step { get; set; }
+    [Parameter] public EventCallback Restart { get; set; }
+    [Parameter] public EventCallback<double> SpeedSet { get; set; }
+    [Parameter] public EventCallback<SchedulingAlgorithmId> Inspect { get; set; }
+}

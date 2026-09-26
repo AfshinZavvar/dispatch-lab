@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <!-- Scenario-style test names intentionally use Algorithm_WhenCondition_ShouldOutcome. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+</Project>

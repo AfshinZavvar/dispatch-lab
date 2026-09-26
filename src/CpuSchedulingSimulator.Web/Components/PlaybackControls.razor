@@ -1,0 +1,59 @@
+<div class="playback-controls" aria-label="Simulation playback controls">
+    <div class="transport-buttons">
+        @if (Playback.Status == PlaybackStatus.Playing)
+        {
+            <button class="control-primary" type="button" @onclick="Pause" aria-label="Pause simulation"><span aria-hidden="true">Ⅱ</span> Pause</button>
+        }
+        else if (Playback.Status == PlaybackStatus.Paused)
+        {
+            <button class="control-primary" type="button" @onclick="Resume" aria-label="Resume simulation"><span aria-hidden="true">▶</span> Resume</button>
+        }
+        else
+        {
+            <button class="control-primary" type="button" @onclick="Start" aria-label="Start simulation"><span aria-hidden="true">▶</span> Start</button>
+        }
+        <button type="button" @onclick="Step" disabled="@(!Playback.CanStepForward)" aria-label="Step forward one event"><span aria-hidden="true">↦</span> Step</button>
+        <button type="button" @onclick="Restart" aria-label="Restart simulation"><span aria-hidden="true">↺</span> Restart</button>
+    </div>
+    <label class="speed-control">
+        <span>Replay speed</span>
+        <select aria-label="Replay speed" value="@Playback.Speed" @onchange="SpeedChanged">
+            <option value="0.5">0.5×</option>
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+        </select>
+    </label>
+    <div class="event-counter" aria-live="polite">
+        Event <strong>@Math.Max(0, Playback.CurrentEventIndex + 1)</strong> / @Playback.Result.Events.Count
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SimulationPlayback Playback { get; set; }
+
+    [Parameter]
+    public EventCallback Start { get; set; }
+
+    [Parameter]
+    public EventCallback Pause { get; set; }
+
+    [Parameter]
+    public EventCallback Resume { get; set; }
+
+    [Parameter]
+    public EventCallback Step { get; set; }
+
+    [Parameter]
+    public EventCallback Restart { get; set; }
+
+    [Parameter]
+    public EventCallback<double> SpeedSet { get; set; }
+
+    private Task SpeedChanged(ChangeEventArgs args)
+    {
+        var speed = double.Parse(args.Value?.ToString() ?? "1", System.Globalization.CultureInfo.InvariantCulture);
+        return SpeedSet.InvokeAsync(speed);
+    }
+}

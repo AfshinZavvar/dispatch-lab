@@ -1,0 +1,40 @@
+<section class="panel algorithm-panel" aria-labelledby="algorithm-title">
+    <div class="panel-heading">
+        <div>
+            <span class="eyebrow">02 · Policies</span>
+            <h2 id="algorithm-title">Choose what the CPU believes</h2>
+        </div>
+        <span class="selection-count">@Selected.Count selected</span>
+    </div>
+
+    <div class="algorithm-grid">
+        @foreach (var algorithm in Algorithms)
+        {
+            var isSelected = Selected.Contains(algorithm.Id);
+            <label class="algorithm-card @(isSelected ? "is-selected" : null)" for="algorithm-@algorithm.Id">
+                <input id="algorithm-@algorithm.Id"
+                       type="checkbox"
+                       checked="@isSelected"
+                       @onchange="() => Toggled.InvokeAsync(algorithm.Id)" />
+                <span class="algorithm-check" aria-hidden="true">@(isSelected ? "✓" : "+")</span>
+                <span class="algorithm-copy">
+                    <strong>@algorithm.ShortName</strong>
+                    <small>@algorithm.Name</small>
+                    <span>@algorithm.Description</span>
+                </span>
+                <span class="mode-tag">@(algorithm.IsPreemptive ? "preemptive" : "non-preemptive")</span>
+            </label>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<SchedulingAlgorithmMetadata> Algorithms { get; set; }
+
+    [Parameter, EditorRequired]
+    public required IReadOnlySet<SchedulingAlgorithmId> Selected { get; set; }
+
+    [Parameter]
+    public EventCallback<SchedulingAlgorithmId> Toggled { get; set; }
+}
