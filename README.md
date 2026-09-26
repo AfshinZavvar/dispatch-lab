@@ -8,6 +8,10 @@ The application models one logical CPU, integer ticks, one CPU burst per job, an
 
 Use it to learn CPU scheduling, demonstrate policy trade-offs in an operating-systems class, or inspect a reusable C# scheduling engine. All simulation and playback run in the browser; no backend service or account is required.
 
+![Dispatch Lab comparing FCFS, SRTF, and Round Robin at tick 3, with aligned execution timelines and each policy's ready queue, CPU, and completed jobs](docs/images/scheduler-comparison.png)
+
+*One workload, three policies, one shared clock. At tick 3, SRTF has already completed two jobs while FCFS and Round Robin are still working through their first jobs.*
+
 **Start here:** [Run locally](#run-locally) · [First experiment](#your-first-experiment) · [Algorithms](#included-algorithms) · [Metrics](#understanding-the-results) · [Development](#verification-commands) · [Documentation](#documentation-map)
 
 ## Your first experiment
@@ -19,6 +23,10 @@ Use it to learn CPU scheduling, demonstrate policy trade-offs in an operating-sy
 5. Click **Next shared decision** to compare every selected policy at the next recorded decision time, or **Play all** for automatic replay. Change speed between 0.5×, 1×, 2×, and 4× without changing the schedules.
 6. Use **Inspect events** on an algorithm card for its complete event-by-event debugger and per-job metrics. This pauses shared playback and opens an independent inspector.
 7. Choose **Edit workload and policies** to change the experiment and rebuild it. The inputs and selection are retained, but the old traces are discarded.
+
+![Dispatch Lab setup showing five editable jobs, nine scheduling policies, and Round Robin quantum and seed options](docs/images/workload-setup.png)
+
+*Configure arrival times, bursts, priorities, and queue classes, then select policies and their options before building the traces.*
 
 Selecting just one policy opens the detailed debugger directly. Its **Step** button advances one event; several events can share a timestamp. In comparison mode, stepping advances one distinct timestamp across all traces.
 
