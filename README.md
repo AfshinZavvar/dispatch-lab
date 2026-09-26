@@ -10,7 +10,7 @@ Use it to learn CPU scheduling, demonstrate policy trade-offs in an operating-sy
 
 ![Dispatch Lab comparing FCFS, SRTF, and Round Robin at tick 3, with aligned execution timelines and each policy's ready queue, CPU, and completed jobs](docs/images/scheduler-comparison.png)
 
-*One workload, three policies, one shared clock. At tick 3, SRTF has already completed two jobs while FCFS and Round Robin are still working through their first jobs.*
+*One workload, three policies, one shared clock. At tick 3, SRTF has already completed two jobs while FCFS and Round Robin have not yet completed a job.*
 
 **Start here:** [Run locally](#run-locally) · [First experiment](#your-first-experiment) · [Algorithms](#included-algorithms) · [Metrics](#understanding-the-results) · [Development](#verification-commands) · [Documentation](#documentation-map)
 
