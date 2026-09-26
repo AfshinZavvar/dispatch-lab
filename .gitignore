@@ -1,6 +1,33 @@
-**/bin/
-**/obj/
-artifacts/
-.vs/
+# .NET build and publish output
+**/[Bb]in/
+**/[Oo]bj/
+/artifacts/
+
+# Test, coverage, benchmark, and mutation output
+/TestResults/
+/coverage/
+coverage.*
+*.coverage
+*.coveragexml
+BenchmarkDotNet.Artifacts/
+StrykerOutput/
+
+# Per-user IDE state
+/.vs/
+/.idea/
+*.suo
 *.user
-TestResults/
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# Local-only configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
